@@ -20,10 +20,10 @@ Parameters:
     CreateAPILevelCloudWatchRole:
         Type: String
         Description: "The email address for the initial user of the solution"
-        Default: TRUE
+        Default: "TRUE"
         AllowedValues:
-            - TRUE
-            - FALSE
+            - "TRUE"
+            - "FALSE"
 
 #################
 ### CONDITIONS ##
@@ -31,9 +31,9 @@ Parameters:
 
 Conditions:
 
-    deployAccountLevelAPICloudWatchRole:
+    deployAccountLevelAPICloudWatchRole: !Equals
         - !Ref CreateAPILevelCloudWatchRole
-        - TRUE
+        - "TRUE"
 
 Resources:
     UserPool:
