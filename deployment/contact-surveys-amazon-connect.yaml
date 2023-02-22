@@ -8,15 +8,32 @@ Parameters:
     AmazonConnectInstanceName:
         Type: String
         Description: The Amazon Connect instance name
-    ContactFlowIdForTasks:
+    ContactFlowARNForTasks:
         Type: String
-        Description: The contact flow you want generated tasks to be directed to
+        Description: The contact flow ARN you want generated tasks to be directed to
     S3BucketName:
         Type: String
         Description: "The S3 Bucket containing the lambda deployment packages (multiple .zip)"
     AdminEmailAddress:
         Type: String
         Description: "The email address for the initial user of the solution"
+    CreateAPILevelCloudWatchRole:
+        Type: String
+        Description: "The email address for the initial user of the solution"
+        Default: TRUE
+        AllowedValues:
+            - TRUE
+            - FALSE
+
+#################
+### CONDITIONS ##
+#################
+
+Conditions:
+
+    deployAccountLevelAPICloudWatchRole:
+        - !Ref CreateAPILevelCloudWatchRole
+        - TRUE
 
 Resources:
     UserPool:
@@ -62,7 +79,7 @@ Resources:
         Properties:
             Bucket: !Ref FrontEndS3Bucket
             PolicyDocument:
-                Version: "2008-10-17"
+                Version: "2012-10-17"
                 Id: "PolicyForCloudFrontPrivateContent"
                 Statement:
                     - Action:
@@ -123,7 +140,7 @@ Resources:
     CloudFrontDistribution:
         Type: "AWS::CloudFront::Distribution"
         Properties:
-            DistributionConfig:
+            DistributionConfig: 
                 Logging:
                     Bucket: !GetAtt FrontEndS3Bucket.RegionalDomainName
                     Prefix: "logs"
@@ -190,8 +207,6 @@ Resources:
 
     LambdaWriteSurveysResults:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaUuidLayer
         Properties:
             Description: "Called by Amazon Connect contact flows to write results of a completed survey"
             Handler: index.handler
@@ -248,8 +263,6 @@ Resources:
 
     LambdaSurveyApi:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaUuidLayer
         Properties:
             Description: "The backend for the API powering the Amazon Connect Post Call Surveys Manager"
             Handler: index.handler
@@ -560,8 +573,6 @@ Resources:
 
     LambdaProcessSurveyFlagsConfig:
         Type: AWS::Lambda::Function
-        DependsOn:
-            - LambdaUuidLayer
         Properties:
             Description: "Called by Amazon Connect contact flows to determine if tasks should be sent to alert on survey results"
             Handler: index.handler
@@ -573,7 +584,7 @@ Resources:
                 - !Ref LambdaUuidLayer
             Environment:
                 Variables:
-                    CONTACT_FLOW_ID: !Ref ContactFlowIdForTasks
+                    CONTACT_FLOW_ID: !Ref     ContactFlowARNForTasks
                     INSTANCE_NAME: !Ref AmazonConnectInstanceName
             Code:
                 ZipFile: |
@@ -750,8 +761,6 @@ Resources:
 
     SurveysApiStage:
         Type: AWS::ApiGateway::Stage
-        DependsOn:
-            - SurveysApiGateway
         Properties:
             RestApiId: !Ref SurveysApiGateway
             StageName: dev
@@ -761,6 +770,29 @@ Resources:
                   HttpMethod: "*"
                   LoggingLevel: "ERROR"
                   ResourcePath: "/*"
+
+# Add CloudWatch Logging Role to the API Gateway Settings for the account.
+    ApiCWLRoleArn:
+        Type: AWS::ApiGateway::Account
+        Condition: deployAccountLevelAPICloudWatchRole
+        Properties: 
+            CloudWatchRoleArn: !GetAtt APIGatewayCloudWatchRole.Arn
+
+# IAM Role for API Gateway + CloudWatch Logging
+    APIGatewayCloudWatchRole:
+        Type: AWS::IAM::Role
+        Condition: deployAccountLevelAPICloudWatchRole
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    Action: 'sts:AssumeRole'
+                    Effect: Allow
+                    Principal:
+                        Service: apigateway.amazonaws.com
+            Path: /
+            ManagedPolicyArns:
+            - 'arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
 
     ApiResultsOptionsMethod:
         Type: AWS::ApiGateway::Method
@@ -978,7 +1010,7 @@ Resources:
                             Action:
                                 - connect:StartTaskContact
                             Resource:
-                                - !Join ["/", [!Ref AmazonConnectInstanceARN, "contact-flow", !Ref ContactFlowIdForTasks]]
+                                - !Join ["/", [!Ref AmazonConnectInstanceARN, "contact-flow", !Ref     ContactFlowARNForTasks]]
 
     LambdaSurveysApiRole:
         Type: AWS::IAM::Role
@@ -1342,7 +1374,6 @@ Resources:
 
     ConnectFunctionPolicyLambdaGetSurveyConfig:
         Type: AWS::Lambda::Permission
-        DependsOn: LambdaGetSurveyConfig
         Properties:
           FunctionName: !Ref LambdaGetSurveyConfig
           Action: "lambda:InvokeFunction"
@@ -1352,7 +1383,6 @@ Resources:
 
     ConnectFunctionPolicyLambdaWriteSurveysResults:
         Type: AWS::Lambda::Permission
-        DependsOn: LambdaWriteSurveysResults
         Properties:
           FunctionName: !Ref LambdaWriteSurveysResults
           Action: "lambda:InvokeFunction"
@@ -1362,7 +1392,6 @@ Resources:
 
     ConnectFunctionPolicyLambdaSurveyUtils:
         Type: AWS::Lambda::Permission
-        DependsOn: LambdaSurveyUtils
         Properties:
           FunctionName: !Ref LambdaSurveyUtils
           Action: "lambda:InvokeFunction"
@@ -1372,7 +1401,6 @@ Resources:
 
     ConnectFunctionPolicyLambdaProcessSurveyFlagsConfig:
         Type: AWS::Lambda::Permission
-        DependsOn: LambdaProcessSurveyFlagsConfig
         Properties:
           FunctionName: !Ref LambdaProcessSurveyFlagsConfig
           Action: "lambda:InvokeFunction"
