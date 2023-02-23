@@ -11,9 +11,9 @@ Parameters:
     ContactFlowARNForTasks:
         Type: String
         Description: The contact flow ARN you want generated tasks to be directed to
-    S3BucketName:
-        Type: String
-        Description: "The S3 Bucket containing the lambda deployment packages (multiple .zip)"
+    # S3BucketName:
+    #     Type: String
+    #     Description: "The S3 Bucket containing the lambda deployment packages (multiple .zip)"
     AdminEmailAddress:
         Type: String
         Description: "The email address for the initial user of the solution"
@@ -30,7 +30,6 @@ Parameters:
 #################
 
 Conditions:
-
     deployAccountLevelAPICloudWatchRole: !Equals
         - !Ref CreateAPILevelCloudWatchRole
         - "TRUE"
@@ -102,7 +101,7 @@ Resources:
         Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
         Properties:
             CloudFrontOriginAccessIdentityConfig:
-                Comment: !Sub "Cloudfront Origin identity"
+                Comment: "Cloudfront Origin identity"
 
     CustomCachePolicy:
         Type: AWS::CloudFront::CachePolicy
@@ -201,7 +200,7 @@ Resources:
             CompatibleRuntimes:
                 - nodejs16.x
             Content:
-                S3Bucket: !Ref S3BucketName
+                S3Bucket: !Sub "vf-survey-deploy-${AWS::Region}-${AWS::AccountId}"
                 S3Key: "uuid-layer.zip"
             LayerName: !Sub ${AWS::StackName}-uuid-layer
 
@@ -275,7 +274,7 @@ Resources:
                 - !Ref LambdaUuidLayer
             Environment:
                 Variables:
-                    CONTACT_FLOW_ID: !Ref     ContactFlowARNForTasks
+                    CONTACT_FLOW_ID: !Ref ContactFlowARNForTasks
                     INSTANCE_NAME: !Ref AmazonConnectInstanceName
             Code:
                 S3Bucket: !Sub 'vf-sc-templates-${AWS::Region}-699520165046'
@@ -659,7 +658,7 @@ Resources:
         Type: Custom::S3CustomResource
         Properties:
             ServiceToken: !GetAtt CustomResourceS3LambdaFunction.Arn
-            SourceBucket: !Ref S3BucketName
+            SourceBucket: !Sub 'vf-survey-deploy-${AWS::Region}-${AWS::AccountId}'
             DestinationBucket: !Ref FrontEndS3Bucket
 
     CustomResourceS3LambdaFunction:
@@ -845,8 +844,8 @@ Resources:
                                 - s3:PutObject
                             Effect: Allow
                             Resource:
-                                - !Sub arn:aws:s3:::${S3BucketName}/*
-                                - !Sub arn:aws:s3:::${S3BucketName}
+                                - !Sub arn:aws:s3:::vf-survey-deploy-${AWS::Region}-${AWS::AccountId}/*
+                                - !Sub arn:aws:s3:::vf-survey-deploy-${AWS::Region}-${AWS::AccountId}
                                 - !Sub arn:aws:s3:::${FrontEndS3Bucket}/*
                                 - !Sub arn:aws:s3:::${FrontEndS3Bucket}
                       Version: "2012-10-17"
