@@ -7,7 +7,7 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: Private
-      BucketName: !Sub "vf-survey-deploy-${AWS::Region}-${AWS::AccountId}"
+      BucketName: !Sub "vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: True
         BlockPublicPolicy: True

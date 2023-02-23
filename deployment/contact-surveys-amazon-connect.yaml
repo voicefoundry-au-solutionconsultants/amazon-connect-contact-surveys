@@ -207,7 +207,7 @@ Resources:
             CompatibleRuntimes:
                 - nodejs16.x
             Content:
-                S3Bucket: !Sub "vf-survey-deploy-${AWS::Region}-${AWS::AccountId}"
+                S3Bucket: !Sub "vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}"
                 S3Key: "uuid-layer.zip"
             LayerName: !Sub ${ResourceNamePrefix}-pcs-uuid-layer-${Environment}
 
@@ -707,7 +707,7 @@ Resources:
         Type: Custom::S3CustomResource
         Properties:
             ServiceToken: !GetAtt CustomResourceS3LambdaFunction.Arn
-            SourceBucket: !Sub 'vf-survey-deploy-${AWS::Region}-${AWS::AccountId}'
+            SourceBucket: !Sub 'vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}'
             DestinationBucket: !Ref FrontEndS3Bucket
 
     CustomResourceS3LambdaFunction:
@@ -900,8 +900,8 @@ Resources:
                                 - s3:PutObject
                             Effect: Allow
                             Resource:
-                                - !Sub arn:aws:s3:::vf-survey-deploy-${AWS::Region}-${AWS::AccountId}/*
-                                - !Sub arn:aws:s3:::vf-survey-deploy-${AWS::Region}-${AWS::AccountId}
+                                - !Sub arn:aws:s3:::vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}/*
+                                - !Sub arn:aws:s3:::vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}
                                 - !Sub arn:aws:s3:::${FrontEndS3Bucket}/*
                                 - !Sub arn:aws:s3:::${FrontEndS3Bucket}
                       Version: "2012-10-17"
