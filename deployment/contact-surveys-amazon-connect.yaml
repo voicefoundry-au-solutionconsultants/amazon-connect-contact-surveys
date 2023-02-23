@@ -23,13 +23,6 @@ Parameters:
     AdminEmailAddress:
         Type: String
         Description: "The email address for the initial user of the solution"
-    CreateAPILevelCloudWatchRole:
-        Type: String
-        Description: "The email address for the initial user of the solution"
-        Default: "TRUE"
-        AllowedValues:
-            - "TRUE"
-            - "FALSE"
     Path:
         Type: String
         Default: "/"
@@ -44,9 +37,6 @@ Parameters:
 #################
 
 Conditions:
-    deployAccountLevelAPICloudWatchRole: !Equals
-        - !Ref CreateAPILevelCloudWatchRole
-        - "TRUE"
   # Add condition for Permission Boundary
     PermissionBoundarySet: !Equals [!Ref PermissionsBoundary, "none"]
 
@@ -355,14 +345,12 @@ Resources:
 # Add CloudWatch Logging Role to the API Gateway Settings for the account.
     ApiCWLRoleArn:
         Type: AWS::ApiGateway::Account
-        Condition: deployAccountLevelAPICloudWatchRole
         Properties: 
             CloudWatchRoleArn: !GetAtt APIGatewayCloudWatchRole.Arn
 
 # IAM Role for API Gateway + CloudWatch Logging
     APIGatewayCloudWatchRole:
         Type: AWS::IAM::Role
-        Condition: deployAccountLevelAPICloudWatchRole
         Properties:
             RoleName: !Sub ${ResourceNamePrefix}-pcs-api-cw-role-${Environment}
             Path: !Ref Path
@@ -1060,6 +1048,28 @@ Resources:
             InstanceArn: !Ref AmazonConnectInstanceARN
             Name: "Contact Survey"
             State: ACTIVE
+
+    IntegrationAssociationLambdaWriteSurveysResults:
+        Type: AWS::Connect::IntegrationAssociation
+        Properties:
+            InstanceId: !Ref AmazonConnectInstanceARN
+            IntegrationType: LAMBDA_FUNCTION
+            IntegrationArn: !GetAtt LambdaWriteSurveysResults.Arn
+
+    IntegrationAssociationLambdaGetSurveyConfig:
+        Type: AWS::Connect::IntegrationAssociation
+        Properties:
+            InstanceId: !Ref AmazonConnectInstanceARN
+            IntegrationType: LAMBDA_FUNCTION
+            IntegrationArn: !GetAtt LambdaGetSurveyConfig.Arn
+
+    IntegrationAssociationLambdaProcessSurveyFlagsConfig:
+        Type: AWS::Connect::IntegrationAssociation
+        Properties:
+            InstanceId: !Ref AmazonConnectInstanceARN
+            IntegrationType: LAMBDA_FUNCTION
+            IntegrationArn: !GetAtt LambdaProcessSurveyFlagsConfig.Arn
+
 
 Outputs:
     WebClient:

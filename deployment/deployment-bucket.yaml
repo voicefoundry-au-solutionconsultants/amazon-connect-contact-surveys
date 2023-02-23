@@ -15,21 +15,3 @@ Resources:
         RestrictPublicBuckets: True
       VersioningConfiguration:
         Status: Suspended
-
-  rBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref rS3Bucket
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - 's3:GetObject'
-            Effect: Allow
-            Resource: !Join
-              - ''
-              - - 'arn:aws:s3:::'
-                - !Sub 'vf-survey-deploy-${AWS::Region}-${AWS::AccountId}'
-                - /*
-            Principal: '*'
-            
