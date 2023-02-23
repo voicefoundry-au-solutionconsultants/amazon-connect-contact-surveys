@@ -2,6 +2,15 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: "Post-contact Surveys for Amazon Connect deployment"
 
 Parameters:
+    ResourceNamePrefix:
+        Type: String
+        Description: "The Prefix for resources rather than *vf* - always lowercase"
+        Default: "vf"
+    Environment:
+        Description: "Max Length Constraint of 5 characters - always lowercase"
+        Type: String
+        Default: dev
+        MaxLength: 5
     AmazonConnectInstanceARN:
         Type: String
         Description: The Amazon Connect instance ARN
@@ -11,9 +20,6 @@ Parameters:
     ContactFlowARNForTasks:
         Type: String
         Description: The contact flow ARN you want generated tasks to be directed to
-    # S3BucketName:
-    #     Type: String
-    #     Description: "The S3 Bucket containing the lambda deployment packages (multiple .zip)"
     AdminEmailAddress:
         Type: String
         Description: "The email address for the initial user of the solution"
@@ -24,6 +30,14 @@ Parameters:
         AllowedValues:
             - "TRUE"
             - "FALSE"
+    Path:
+        Type: String
+        Default: "/"
+    PermissionsBoundary:
+        Type: String
+        Description: "Leave as *none* if not using permission boundaries on roles"
+        Default: "none"
+
 
 #################
 ### CONDITIONS ##
@@ -33,12 +47,14 @@ Conditions:
     deployAccountLevelAPICloudWatchRole: !Equals
         - !Ref CreateAPILevelCloudWatchRole
         - "TRUE"
+  # Add condition for Permission Boundary
+    PermissionBoundarySet: !Equals [!Ref PermissionsBoundary, "none"]
 
 Resources:
     UserPool:
         Type: AWS::Cognito::UserPool
         Properties:
-            UserPoolName: !Sub ${AWS::StackName}-user-pool
+            UserPoolName: !Sub ${ResourceNamePrefix}-pcs-${Environment}
             UsernameConfiguration:
                 CaseSensitive: false
             AutoVerifiedAttributes:
@@ -91,6 +107,7 @@ Resources:
     FrontEndS3Bucket:
         Type: AWS::S3::Bucket
         Properties:
+            BucketName: !Sub ${ResourceNamePrefix}-pcs-frontend-${Environment}
             PublicAccessBlockConfiguration:
                 BlockPublicAcls: true
                 BlockPublicPolicy: true
@@ -111,7 +128,7 @@ Resources:
                 DefaultTTL: 3600
                 MaxTTL: 86400
                 MinTTL: 500
-                Name: !Sub "CustomCachePolicy_${AWS::StackName}"
+                Name: !Sub "${ResourceNamePrefix}-pcs-CachePolicy-${Environment}"
                 ParametersInCacheKeyAndForwardedToOrigin:
                     CookiesConfig:
                         CookieBehavior: none
@@ -128,7 +145,7 @@ Resources:
         Type: AWS::CloudFront::OriginRequestPolicy
         Properties:
             OriginRequestPolicyConfig:
-                Name: !Sub "CustomOriginRequestPolicy_${AWS::StackName}"
+                Name: !Sub ${ResourceNamePrefix}-pcs-CustomOriginRequestPolicy-${Environment}
                 CookiesConfig:
                     CookieBehavior: all
                 HeadersConfig:
@@ -202,7 +219,7 @@ Resources:
             Content:
                 S3Bucket: !Sub "vf-survey-deploy-${AWS::Region}-${AWS::AccountId}"
                 S3Key: "uuid-layer.zip"
-            LayerName: !Sub ${AWS::StackName}-uuid-layer
+            LayerName: !Sub ${ResourceNamePrefix}-pcs-uuid-layer-${Environment}
 
     LambdaWriteSurveysResults:
         Type: AWS::Lambda::Function
@@ -211,7 +228,7 @@ Resources:
             Handler: index.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaWriteSurveyResultsRole.Arn
-            FunctionName: !Sub ${AWS::StackName}-surveys-write-results
+            FunctionName: !Sub ${ResourceNamePrefix}-pcs-surveys-write-results-${Environment}
             Timeout: 12
             Layers:
                 - !Ref LambdaUuidLayer
@@ -229,7 +246,7 @@ Resources:
             Handler: index.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaSurveysApiRole.Arn
-            FunctionName: !Sub ${AWS::StackName}-surveys-api
+            FunctionName: !Sub ${ResourceNamePrefix}-pcs-surveys-api-${Environment}
             Timeout: 12
             Layers:
                 - !Ref LambdaUuidLayer
@@ -252,7 +269,7 @@ Resources:
             Handler: index.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaGetSurveyConfigRole.Arn
-            FunctionName: !Sub ${AWS::StackName}-surveys-get-survey-config
+            FunctionName: !Sub ${ResourceNamePrefix}-pcs-get-survey-config-${Environment}
             Timeout: 12
             Code:
                 S3Bucket: !Sub 'vf-sc-templates-${AWS::Region}-699520165046'
@@ -268,7 +285,7 @@ Resources:
             Handler: index.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaProcessSurveysFlagsRole.Arn
-            FunctionName: !Sub ${AWS::StackName}-process-survey-flags
+            FunctionName: !Sub ${ResourceNamePrefix}-pcs-process-survey-flags-${Environment}
             Timeout: 12
             Layers:
                 - !Ref LambdaUuidLayer
@@ -290,7 +307,7 @@ Resources:
             Handler: index.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaSurveysUtilsRole.Arn
-            FunctionName: !Sub ${AWS::StackName}-utils
+            FunctionName: !Sub ${ResourceNamePrefix}-pcs-utils-${Environment}
             Timeout: 12
             Code:
                 S3Bucket: !Sub 'vf-sc-templates-${AWS::Region}-699520165046'
@@ -310,7 +327,7 @@ Resources:
     SurveysApiGateway:
         Type: AWS::ApiGateway::RestApi
         Properties:
-            Name: !Sub ${AWS::StackName}-api-cf
+            Name: !Sub ${ResourceNamePrefix}-pcs-api-cf-${Environment}
 
     SurveysApiDeployment:
         Type: AWS::ApiGateway::Deployment
@@ -347,6 +364,14 @@ Resources:
         Type: AWS::IAM::Role
         Condition: deployAccountLevelAPICloudWatchRole
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-api-cw-role-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Version: '2012-10-17'
                 Statement:
@@ -354,7 +379,6 @@ Resources:
                     Effect: Allow
                     Principal:
                         Service: apigateway.amazonaws.com
-            Path: /
             ManagedPolicyArns:
             - 'arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
 
@@ -521,10 +545,8 @@ Resources:
             KeySchema:
                 - AttributeName: surveyId
                   KeyType: HASH
-            TableName: !Sub ${AWS::StackName}-surveys-config
-            ProvisionedThroughput:
-                ReadCapacityUnits: 1
-                WriteCapacityUnits: 1
+            TableName: !Sub ${ResourceNamePrefix}-pcs-surveys-config-${Environment}
+            BillingMode: PAY_PER_REQUEST
 
     SurveysResultsDDBTable:
         Type: AWS::DynamoDB::Table
@@ -535,14 +557,21 @@ Resources:
             KeySchema:
                 - AttributeName: contactId
                   KeyType: HASH
-            TableName: !Sub ${AWS::StackName}-surveys-results
-            ProvisionedThroughput:
-                ReadCapacityUnits: 1
-                WriteCapacityUnits: 1
+            TableName: !Sub ${ResourceNamePrefix}-pcs-surveys-results-${Environment}
+            BillingMode: PAY_PER_REQUEST
+
 
     LambdaSurveysUtilsRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-utils-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -556,6 +585,14 @@ Resources:
     LambdaProcessSurveysFlagsRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-surveyflags-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -579,6 +616,14 @@ Resources:
     LambdaSurveysApiRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-surveyapi-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -608,6 +653,14 @@ Resources:
     LambdaGetSurveyConfigRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-surveyconfig-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -633,6 +686,14 @@ Resources:
     LambdaWriteSurveyResultsRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-surveyresults-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Version: "2012-10-17"
                 Statement:
@@ -814,6 +875,14 @@ Resources:
     CustomResourceS3LambdaExecutionRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-crs3-exec-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Statement:
                     - Action:
@@ -823,7 +892,6 @@ Resources:
                           Service:
                               - lambda.amazonaws.com
                 Version: "2012-10-17"
-            Path: "/"
             Policies:
                 - PolicyDocument:
                       Statement:
@@ -834,7 +902,7 @@ Resources:
                             Effect: Allow
                             Resource: arn:aws:logs:*:*:*
                       Version: "2012-10-17"
-                  PolicyName: !Sub ${AWS::StackName}-CustomResource-CW
+                  PolicyName: !Sub ${ResourceNamePrefix}-pcs-crcw-${Environment}
                 - PolicyDocument:
                       Statement:
                           - Action:
@@ -849,7 +917,8 @@ Resources:
                                 - !Sub arn:aws:s3:::${FrontEndS3Bucket}/*
                                 - !Sub arn:aws:s3:::${FrontEndS3Bucket}
                       Version: "2012-10-17"
-                  PolicyName: !Sub ${AWS::StackName}-CustomResourceLambda-S3
+                  PolicyName: !Sub ${ResourceNamePrefix}-pcs-crs3-${Environment}
+                  
 
     LambdaCustomResource:
         Type: Custom::LambdaCustomResource
@@ -905,6 +974,14 @@ Resources:
     CustomResourceLambdaExecutionRole:
         Type: AWS::IAM::Role
         Properties:
+            RoleName: !Sub ${ResourceNamePrefix}-pcs-cr-exec-${Environment}
+            Path: !Ref Path
+            PermissionsBoundary:
+                !If [
+                PermissionBoundarySet,
+                !Ref "AWS::NoValue",
+                !Ref PermissionsBoundary,
+                ]
             AssumeRolePolicyDocument:
                 Statement:
                     - Action:
@@ -914,7 +991,6 @@ Resources:
                           Service:
                               - lambda.amazonaws.com
                 Version: "2012-10-17"
-            Path: "/"
             Policies:
                 - PolicyDocument:
                       Statement:
@@ -925,7 +1001,7 @@ Resources:
                             Effect: Allow
                             Resource: arn:aws:logs:*:*:*
                       Version: "2012-10-17"
-                  PolicyName: !Sub ${AWS::StackName}-CRLambda-logs
+                  PolicyName: !Sub ${ResourceNamePrefix}-pcs-crlogs-${Environment}                  
                 - PolicyDocument:
                       Statement:
                           - Action:
@@ -934,7 +1010,7 @@ Resources:
                             Resource:
                                 - !Join ["/", [!GetAtt FrontEndS3Bucket.Arn, "config.js"]]
                       Version: "2012-10-17"
-                  PolicyName: !Sub ${AWS::StackName}-CRLambda-config
+                  PolicyName: !Sub ${ResourceNamePrefix}-pcs-crconfig-${Environment}                  
 
     ConnectFunctionPolicyLambdaGetSurveyConfig:
         Type: AWS::Lambda::Permission
