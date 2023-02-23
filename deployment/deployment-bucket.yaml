@@ -1,0 +1,17 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Create S3 Bucket for Deployment Files'
+
+Resources:
+  rS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub "vf-survey-deploy-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      VersioningConfiguration:
+        Status: Suspended
