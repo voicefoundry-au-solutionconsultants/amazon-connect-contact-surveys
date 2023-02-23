@@ -64,7 +64,6 @@ Typically, this solution should be deployed by a user with full access to your A
 - the ARN of the Amazon Connect instance you want to use with this solution
 - the alias of the Amazon Connect instance you want to use with this solution
 - the id of the Contact Flow to which task created by this solution will be sent to
-- if you want to create the CloudWatch Logging Role select True
 - the permission boundary if you are using them otherwise leave as 'none'
 - the path if using a permission boundary which is not / - this usually will not change!
 
