@@ -99,6 +99,9 @@ Resources:
         Properties:
             BucketName: !Sub ${ResourceNamePrefix}-pcs-frontend-${Environment}
             AccessControl: Private
+            OwnershipControls:
+                Rules:
+                - ObjectOwnership: ObjectWriter
             PublicAccessBlockConfiguration:
                 BlockPublicAcls: true
                 BlockPublicPolicy: true
