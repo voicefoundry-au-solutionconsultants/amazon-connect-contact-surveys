@@ -98,6 +98,7 @@ Resources:
         Type: AWS::S3::Bucket
         Properties:
             BucketName: !Sub ${ResourceNamePrefix}-pcs-frontend-${Environment}
+            AccessControl: Private
             PublicAccessBlockConfiguration:
                 BlockPublicAcls: true
                 BlockPublicPolicy: true
