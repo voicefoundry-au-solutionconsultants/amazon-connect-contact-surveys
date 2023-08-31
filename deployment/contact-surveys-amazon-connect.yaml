@@ -98,11 +98,9 @@ Resources:
         Type: AWS::S3::Bucket
         Properties:
             BucketName: !Sub ${ResourceNamePrefix}-pcs-frontend-${Environment}
-            PublicAccessBlockConfiguration:
-                BlockPublicAcls: true
-                BlockPublicPolicy: true
-                IgnorePublicAcls: true
-                RestrictPublicBuckets: true
+            OwnershipControls:
+                Rules:
+                    - ObjectOwnership: ObjectWriter
 
     CDNOriginIdentity:
         Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
@@ -707,7 +705,7 @@ Resources:
         Type: Custom::S3CustomResource
         Properties:
             ServiceToken: !GetAtt CustomResourceS3LambdaFunction.Arn
-            SourceBucket: !Sub 'vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}'
+            SourceBucket: !Sub 'vf-sc-templates-${AWS::Region}-699520165046'
             DestinationBucket: !Ref FrontEndS3Bucket
 
     CustomResourceS3LambdaFunction:
