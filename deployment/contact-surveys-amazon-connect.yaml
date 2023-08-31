@@ -207,7 +207,7 @@ Resources:
             CompatibleRuntimes:
                 - nodejs16.x
             Content:
-                S3Bucket: !Sub "vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}"
+                S3Bucket: !Sub 'vf-sc-templates-${AWS::Region}-699520165046'
                 S3Key: "uuid-layer.zip"
             LayerName: !Sub ${ResourceNamePrefix}-pcs-uuid-layer-${Environment}
 
