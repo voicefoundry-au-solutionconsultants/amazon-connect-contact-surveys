@@ -97,7 +97,7 @@ Resources:
     FrontEndS3Bucket:
         Type: AWS::S3::Bucket
         Properties:
-            BucketName: !Sub ${ResourceNamePrefix}-pcs-frontend-${Environment}
+            BucketName: !Sub ${ResourceNamePrefix}-pcs-frontend-${Environment}-bucket
             OwnershipControls:
                 Rules:
                     - ObjectOwnership: ObjectWriter
@@ -705,7 +705,7 @@ Resources:
         Type: Custom::S3CustomResource
         Properties:
             ServiceToken: !GetAtt CustomResourceS3LambdaFunction.Arn
-            SourceBucket: !Sub 'vf-sc-templates-${AWS::Region}-699520165046'
+            SourceBucket: !Sub 'vf-pcs-deploy-${AWS::Region}-${AWS::AccountId}'
             DestinationBucket: !Ref FrontEndS3Bucket
 
     CustomResourceS3LambdaFunction:
