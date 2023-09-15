@@ -213,7 +213,7 @@ Resources:
         Type: AWS::Lambda::Function
         Properties:
             Description: "Called by Amazon Connect contact flows to write results of a completed survey"
-            Handler: index.handler
+            Handler: LambdaWriteSurveysResults.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaWriteSurveyResultsRole.Arn
             FunctionName: !Sub ${ResourceNamePrefix}-pcs-surveys-write-results-${Environment}
@@ -231,7 +231,7 @@ Resources:
         Type: AWS::Lambda::Function
         Properties:
             Description: "The backend for the API powering the Amazon Connect Post Call Surveys Manager"
-            Handler: index.handler
+            Handler: LambdaSurveyApi.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaSurveysApiRole.Arn
             FunctionName: !Sub ${ResourceNamePrefix}-pcs-surveys-api-${Environment}
@@ -254,7 +254,7 @@ Resources:
             - LambdaUuidLayer
         Properties:
             Description: "Called by Amazon Connect contact flows to retrieve a survey configuration"
-            Handler: index.handler
+            Handler: LambdaGetSurveyConfig.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaGetSurveyConfigRole.Arn
             FunctionName: !Sub ${ResourceNamePrefix}-pcs-get-survey-config-${Environment}
@@ -270,7 +270,7 @@ Resources:
         Type: AWS::Lambda::Function
         Properties:
             Description: "Called by Amazon Connect contact flows to determine if tasks should be sent to alert on survey results"
-            Handler: index.handler
+            Handler: LambdaProcessSurveyFlagsConfig.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaProcessSurveysFlagsRole.Arn
             FunctionName: !Sub ${ResourceNamePrefix}-pcs-process-survey-flags-${Environment}
@@ -292,7 +292,7 @@ Resources:
             - LambdaUuidLayer
         Properties:
             Description: "A set of utilities for the solution to work"
-            Handler: index.handler
+            Handler: LambdaSurveyUtils.handler
             Runtime: nodejs16.x
             Role: !GetAtt LambdaSurveysUtilsRole.Arn
             FunctionName: !Sub ${ResourceNamePrefix}-pcs-utils-${Environment}
